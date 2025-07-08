@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>The Canyon Alliance 3D Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/maplibre-gl@3.2.1/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@3.2.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: "Host Grotesk", sans-serif;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .legend-toggle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      background: white;
+      border: 1px solid #131313;
+      border-radius: 6px;
+      padding: 0.4rem 0.5rem;
+      cursor: pointer;
+    }
+
+    .legend-box {
+      position: absolute;
+      bottom: 30px;
+      right: 10px;
+      z-index: 9;
+      background: white;
+      border: 1px solid #131313;
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      display: block;
+    }
+
+    .legend-close {
+      position: absolute;
+      top: 5px;
+      right: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .legend-line {
+      width: 18px;
+      height: 2px;
+      background: red;
+      margin-right: 8px;
+    }
+
+    .legend-structure {
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(to bottom right, #bbb, #777);
+      transform: skewY(-20deg);
+      margin-right: 8px;
+    }
+
+    .legend-box-color {
+      width: 14px;
+      height: 14px;
+      margin-right: 8px;
+      border: 1px solid #131313;
+    }
+
+    .popup-table {
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      width: 100%;
+      color: #131313;
+    }
+
+    .popup-table td {
+      padding: 2px 6px;
+      vertical-align: top;
+    }
+
+    .popup-table td.label {
+      text-align: right;
+      font-weight: 600;
+      white-space: nowrap;
+      padding-right: 0.6rem;
+      color: #444;
+    }
+
+    .popup-table td.value {
+      text-align: left;
+      font-weight: normal;
+    }
+
+    @media (max-width: 768px) {
+      .legend-box {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <button class="legend-toggle" id="toggleLegend">&#9776;</button>
+
+  <div class="legend-box" id="legendBox">
+    <span class="legend-close" id="legendClose">&times;</span>
+
+    <div class="legend-row">
+      <div class="legend-line"></div>
+      <span>Boundary</span>
+    </div>
+
+    <div class="legend-row">
+      <div class="legend-structure"></div>
+      <span>Structures</span>
+    </div>
+
+    <hr>
+
+    <div class="legend-row">
+      <div class="legend-box-color" style="background:#BEFFE8"></div>
+      <span>Boca</span>
+    </div>
+    <div class="legend-row">
+      <div class="legend-box-color" style="background:#E8BEFF"></div>
+      <span>Upper Santa Monica Canyon</span>
+    </div>
+    <div class="legend-row">
+      <div class="legend-box-color" style="background:#73B2FF"></div>
+      <span>Lower Santa Monica Canyon</span>
+    </div>
+    <div class="legend-row">
+      <div class="legend-box-color" style="background:#D1FF73"></div>
+      <span>Upper Rustic Canyon</span>
+    </div>
+    <div class="legend-row">
+      <div class="legend-box-color" style="background:#FFD37F"></div>
+      <span>Lower Rustic Canyon</span>
+    </div>
+  </div>
+
+  <script>
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+      pitch: 45,
+      bearing: -20
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
+    map.on('load', () => {
+      fetch('data/boundary.geojson')
+        .then(res => res.json())
+        .then(data => {
+          const bounds = turf.bbox(data);
+
+          map.fitBounds(bounds, {
+            padding: {
+              top: window.innerHeight * 0.02,
+              bottom: window.innerHeight * 0.15,
+              left: window.innerWidth * 0.03,
+              right: window.innerWidth * 0.03
+            },
+            linear: true,
+            duration: 0
+          });
+
+          map.addSource('boundary', {
+            type: 'geojson',
+            data: data
+          });
+
+          map.addLayer({
+            id: 'boundary-line',
+            type: 'line',
+            source: 'boundary',
+            paint: {
+              'line-color': '#ff0000',
+              'line-width': 1
+            }
+          }, 'parcels-fill');
+        });
+
+      map.addSource('parcels', {
+        type: 'geojson',
+        data: 'data/parcel.geojson'
+      });
+
+      map.addLayer({
+        id: 'parcels-fill',
+        type: 'fill',
+        source: 'parcels',
+        paint: {
+          'fill-color': [
+            'match',
+            ['get', 'NEIGHBORHOOD'],
+            'Boca', '#BEFFE8',
+            'Upper Santa Monica Canyon', '#E8BEFF',
+            'Lower Santa Monica Canyon', '#73B2FF',
+            'Upper Rustic Canyon', '#D1FF73',
+            'Lower Rustic Canyon', '#FFD37F',
+            '#bbbbbb'
+          ],
+          'fill-opacity': 0.9
+        }
+      });
+
+      map.addLayer({
+        id: 'parcels-outline',
+        type: 'line',
+        source: 'parcels',
+        paint: {
+          'line-color': '#828282',
+          'line-width': 0.5
+        }
+      });
+
+      map.addSource('structures', {
+        type: 'geojson',
+        data: 'data/structure2.geojson'
+      });
+
+      map.addLayer({
+        id: 'buildings',
+        type: 'fill-extrusion',
+        source: 'structures',
+        paint: {
+          'fill-extrusion-color': '#aaaaaa',
+          'fill-extrusion-height': ['*', ['get', 'HEIGHT'], 0.3048],
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 0.8
+        }
+      });
+
+      map.addLayer({
+        id: 'buildings-interactive',
+        type: 'fill',
+        source: 'structures',
+        paint: {
+          'fill-color': '#000',
+          'fill-opacity': 0
+        }
+      });
+
+      map.on('click', 'buildings-interactive', (e) => {
+        const props = e.features[0].properties;
+        new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(`
+            <table class="popup-table">
+              <tr><td class="label">AIN:</td><td class="value">${props.AIN}</td></tr>
+              <tr><td class="label">Neighborhood:</td><td class="value">${props.NEIGHBORHOOD}</td></tr>
+              <tr><td class="label">Address:</td><td class="value">${props.ADDRESS || '—'}</td></tr>
+              <tr><td class="label">Building ID:</td><td class="value">${props.BLD_ID}</td></tr>
+              <tr><td class="label">Height (ft):</td><td class="value">${props.HEIGHT}</td></tr>
+              <tr><td class="label">Elevation (ft):</td><td class="value">${props.ELEV}</td></tr>
+            </table>
+          `)
+          .addTo(map);
+      });
+
+      map.on('click', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['buildings-interactive'] });
+        if (features.length) return;
+
+        const parcels = map.queryRenderedFeatures(e.point, { layers: ['parcels-fill'] });
+        if (parcels.length > 0) {
+          const props = parcels[0].properties;
+          new maplibregl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML(`
+              <table class="popup-table">
+                <tr><td class="label">AIN:</td><td class="value">${props.AIN}</td></tr>
+                <tr><td class="label">Neighborhood:</td><td class="value">${props.NEIGHBORHOOD}</td></tr>
+                <tr><td class="label">Address:</td><td class="value">${props.ADDRESS || '—'}</td></tr>
+              </table>
+            `)
+            .addTo(map);
+        }
+      });
+
+      map.on('mouseenter', 'parcels-fill', () => map.getCanvas().style.cursor = 'pointer');
+      map.on('mouseleave', 'parcels-fill', () => map.getCanvas().style.cursor = '');
+
+      map.on('mouseenter', 'buildings-interactive', () => map.getCanvas().style.cursor = 'pointer');
+      map.on('mouseleave', 'buildings-interactive', () => map.getCanvas().style.cursor = '');
+    });
+
+    document.getElementById('toggleLegend').addEventListener('click', () => {
+      const box = document.getElementById('legendBox');
+      box.style.display = (box.style.display === 'none' || box.style.display === '') ? 'block' : 'none';
+    });
+
+    document.getElementById('legendClose').addEventListener('click', () => {
+      document.getElementById('legendBox').style.display = 'none';
+    });
+  </script>
+</body>
+</html>
