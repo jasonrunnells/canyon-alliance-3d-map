@@ -28,9 +28,13 @@
       z-index: 10;
       background: white;
       border: 1px solid #131313;
-      border-radius: 6px;
       padding: 0.4rem 0.5rem;
       cursor: pointer;
+      -webkit-appearance: none; /* for Safari */
+      -moz-appearance: none;    /* for Firefox */
+      appearance: none;         /* standard */
+      background: white;
+      color: #131313;
     }
 
     .legend-box {
@@ -38,9 +42,8 @@
       bottom: 30px;
       right: 10px;
       z-index: 9;
-      background: white;
+      background: #fff;
       border: 1px solid #131313;
-      border-radius: 10px;
       padding: 0.8rem 1rem;
       font-size: 0.9rem;
       line-height: 1.4;
@@ -63,7 +66,7 @@
     }
 
     .legend-line {
-      width: 18px;
+      width: 14px;
       height: 2px;
       background: red;
       margin-right: 8px;
@@ -123,7 +126,6 @@
   <button class="legend-toggle" id="toggleLegend">&#9776;</button>
 
   <div class="legend-box" id="legendBox">
-    <span class="legend-close" id="legendClose">&times;</span>
 
     <div class="legend-row">
       <div class="legend-line"></div>
